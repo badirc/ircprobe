@@ -24,8 +24,11 @@ async fn connect_to_server(endpoint: String) -> Result<TcpStream> {
 async fn main() {
     let args = Args::parse();
 
+    println!("Connecting to {}", args.server);
     let stream = connect_to_server(args.server).await.unwrap();
     let (read, write) = stream.into_split();
+    print!("> ");
+    io::stdout().flush().unwrap();
 
     thread::spawn(move || loop {
         let mut input = String::new();
@@ -55,13 +58,18 @@ async fn main() {
                     ))
                 }
             }) {
+            Ok(response) if response.is_empty() => {
+                println!("\nServer closed connection. Exiting");
+                std::process::exit(0);
+            }
             Ok(response) => {
-                println!("{}", response);
+                println!("\n{}", response);
                 print!("> ");
                 io::stdout().flush().unwrap();
             }
+
             Err(error) => {
-                println!("Internal error: {:?}", error);
+                println!("\nInternal error: {:?}", error);
             }
         }
     }
