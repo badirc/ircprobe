@@ -1,8 +1,10 @@
 [package]
 name = "ircprobe"
+description = "line-based IRC client"
 version = "0.1.0"
 edition = "2021"
 authors = ["Liv <shadows_withal@fastmail.com>"]
+license = "MIT"
 repository = "https://github.com/badirc/ircprobe"
 homepage = "https://github.com/badirc/ircprobe"
 
