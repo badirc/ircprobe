@@ -22,6 +22,9 @@ async fn main() -> Result<()> {
     tokio::pin!(connection);
     let mut frame = Framed::new(connection, LinesCodec::new());
     loop {
+        // We always want to pick either a Future where something from stdin is read, or a
+        // Future where we receive a message from the server. Since both Futures are cancel-safe,
+        // we don't actually lose data by disregarding the other one.
         tokio::select! {
             r = frame.next() => match r {
                 None => {
