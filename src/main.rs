@@ -1,10 +1,10 @@
-use connection::Connection;
-
 use anyhow::Result;
 use clap::Parser;
-use reedline::{DefaultPrompt, Reedline, Signal};
-
-mod connection;
+use futures::{SinkExt, StreamExt};
+use rustyline_async::{Readline, ReadlineError};
+use std::io::Write;
+use tokio::net::TcpStream;
+use tokio_util::codec::{Framed, LinesCodec};
 
 /// A small DIY IRC client
 #[derive(Parser, Debug)]
@@ -16,33 +16,36 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let mut connection = Connection::new(args.server).await?;
-    let mut line_editor = Reedline::create();
-    let prompt = DefaultPrompt::default();
+    let (mut rl, mut stdout) = Readline::new("> ".to_owned())?;
 
-    // FIXME: Do we need this clone?
-    let read_stream = connection.read_stream.clone();
-    tokio::spawn(async move {
-        loop {
-            match Connection::extern_read_message(&read_stream).await {
-                Ok(message) => println!("{}", message),
-                Err(err) => eprintln!("{:?}", err),
-            };
-        }
-    });
-
+    let connection = TcpStream::connect(args.server).await?;
+    tokio::pin!(connection);
+    let mut frame = Framed::new(connection, LinesCodec::new());
     loop {
-        let sig = line_editor.read_line(&prompt);
-        match sig {
-            Ok(Signal::Success(buffer)) => {
-                connection.write_message(buffer).await?;
+        tokio::select! {
+            r = frame.next() => match r {
+                None => {
+                    writeln!(stdout, "ERROR: Connection closed by server. Exiting")?;
+                    break;
+                }
+                Some(string) => {
+                    writeln!(stdout, "{}", string?)?;
+                }
+            },
+            input = rl.readline() => match input {
+                Ok(line) => {
+                    frame.send(line).await?;
+                }
+                Err(ReadlineError::Eof) | Err(ReadlineError::Closed) => break,
+                Err(ReadlineError::Interrupted) => {
+                    writeln!(stdout, "^C")?;
+                    continue;
+                }
+                Err(_) => {}
             }
-            Ok(Signal::CtrlD) | Ok(Signal::CtrlC) => {
-                break;
-            }
-            _ => (),
         }
     }
 
+    rl.flush()?;
     Ok(())
 }
