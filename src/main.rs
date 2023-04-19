@@ -6,6 +6,8 @@ use std::io::Write;
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LinesCodec};
 
+mod parser;
+
 /// A small DIY IRC client
 #[derive(Parser, Debug)]
 struct Args {
@@ -37,7 +39,10 @@ async fn main() -> Result<()> {
             },
             input = rl.readline() => match input {
                 Ok(line) => {
-                    frame.send(line).await?;
+                    let parsed = parser::parse(line)?;
+                    for command in parsed {
+                        frame.send(command.clone()).await?;
+                    }
                 }
                 Err(ReadlineError::Eof) | Err(ReadlineError::Closed) => break,
                 Err(ReadlineError::Interrupted) => {
