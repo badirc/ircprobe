@@ -2,7 +2,7 @@
 name = "ircprobe"
 version = "0.1.0"
 edition = "2021"
-authors = ["Liv <shadows_withal@fastmail.com"]
+authors = ["Liv <shadows_withal@fastmail.com>"]
 repository = "https://github.com/badirc/ircprobe"
 homepage = "https://github.com/badirc/ircprobe"
 
